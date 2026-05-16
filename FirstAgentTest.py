@@ -32,11 +32,25 @@ def _require_env(name: str) -> str:
 _root = Path(__file__).resolve().parent
 _load_env_file(_root / ".env")
 
+
+def _env(*names: str, default: str | None = None) -> str | None:
+    for name in names:
+        value = os.environ.get(name)
+        if value:
+            return value
+    return default
+
+
 # --- 1. 配置LLM客户端 ---
-API_KEY = _require_env("OPENAI_API_KEY")
-BASE_URL = os.environ.get("OPENAI_BASE_URL", "https://api-inference.modelscope.cn/v1/")
-MODEL_ID = os.environ.get("MODEL_NAME", "deepseek-ai/DeepSeek-V3.2")
-_require_env("TAVILY_API_KEY")
+API_KEY = _env("OPENAI_API_KEY", "API_KEY")
+if not API_KEY:
+    raise SystemExit(
+        "缺少 OPENAI_API_KEY（或旧版 API_KEY）。请复制 .env.example 为 .env 并填入密钥。"
+    )
+BASE_URL = _env("OPENAI_BASE_URL", "BASE_URL") or "https://api-inference.modelscope.cn/v1/"
+MODEL_ID = _env("MODEL_NAME", "MODEL_ID") or "deepseek-ai/DeepSeek-V3.2"
+if not _env("TAVILY_API_KEY"):
+    raise SystemExit("缺少 TAVILY_API_KEY。请在 .env 中配置。")
 
 llm = OpenAICompatibleClient(
     model=MODEL_ID,
