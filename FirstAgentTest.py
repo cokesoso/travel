@@ -1,16 +1,42 @@
 import os
 import re
+from pathlib import Path
+
 from OpenAICompatibleClient import OpenAICompatibleClient
 from system_prompt import AGENT_SYSTEM_PROMPT
 from available_tools import available_tools
 
+
+def _load_env_file(path: Path) -> None:
+    if not path.is_file():
+        return
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        key, value = key.strip(), value.strip().strip('"').strip("'")
+        if key and key not in os.environ:
+            os.environ[key] = value
+
+
+def _require_env(name: str) -> str:
+    value = os.environ.get(name)
+    if not value:
+        raise SystemExit(
+            f"缺少环境变量 {name}。请复制 .env.example 为 .env 并填入密钥后重试。"
+        )
+    return value
+
+
+_root = Path(__file__).resolve().parent
+_load_env_file(_root / ".env")
+
 # --- 1. 配置LLM客户端 ---
-# 请根据您使用的服务，将这里替换成对应的凭证和地址
-API_KEY = "ms-943c55df-f2ff-4e2b-a258-a477ca815d03"
-BASE_URL = "https://api-inference.modelscope.cn/v1/"
-MODEL_ID = "deepseek-ai/DeepSeek-V3.2"
-TAVILY_API_KEY = "YOUR_Tavily_KEY"
-os.environ['TAVILY_API_KEY'] = "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"
+API_KEY = _require_env("OPENAI_API_KEY")
+BASE_URL = os.environ.get("OPENAI_BASE_URL", "https://api-inference.modelscope.cn/v1/")
+MODEL_ID = os.environ.get("MODEL_NAME", "deepseek-ai/DeepSeek-V3.2")
+_require_env("TAVILY_API_KEY")
 
 llm = OpenAICompatibleClient(
     model=MODEL_ID,
@@ -19,7 +45,7 @@ llm = OpenAICompatibleClient(
 )
 
 # --- 2. 初始化 ---
-user_prompt = "你好，请帮我查询一下今天里加的天气，然后根据天气推荐一个合适的旅游景点。"
+user_prompt = "你好，请帮我查询一下今天利耶帕亚的天气，然后根据天气推荐一个合适的旅游景点。"
 prompt_history = [f"用户请求: {user_prompt}"]
 
 print(f"用户输入: {user_prompt}\n" + "=" * 40)
